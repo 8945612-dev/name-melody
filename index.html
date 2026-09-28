@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5eee7">
+<title>Мелодия имени</title>
+<style>
+  :root {
+    --paper: #f5eee7;
+    --ink: #1b1820;
+    --muted: #756c76;
+    --line: rgba(27, 24, 32, .13);
+    --accent: #ba5c67;
+    --accent-soft: #ebc4c7;
+  }
+  * { box-sizing: border-box; }
+  html { min-height: 100%; background: var(--paper); }
+  body {
+    min-height: 100vh; margin: 0; color: var(--ink);
+    background:
+      radial-gradient(circle at 75% 14%, rgba(255,255,255,.95), transparent 27rem),
+      linear-gradient(145deg, #f8f1e9, #eee4df);
+    font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  }
+  button, input, select { font: inherit; }
+  .app {
+    width: min(1160px, 100%); min-height: 100vh; margin: auto;
+    padding: clamp(22px, 4vw, 56px);
+    display: grid; grid-template-columns: minmax(300px, .82fr) minmax(400px, 1.18fr);
+    gap: clamp(30px, 6vw, 90px); align-items: center;
+  }
+  .eyebrow {
+    margin: 0 0 18px; color: var(--accent); font-size: 12px;
+    font-weight: 750; letter-spacing: .14em; text-transform: uppercase;
+  }
+  h1 {
+    margin: 0; max-width: 8ch;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(54px, 7vw, 96px); font-weight: 400;
+    line-height: .9; letter-spacing: -.055em;
+  }
+  .intro {
+    max-width: 34rem; margin: 24px 0 32px; color: var(--muted);
+    font-size: 16px; line-height: 1.55;
+  }
+  label {
+    display: block; margin: 0 0 8px; color: var(--muted);
+    font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  }
+  .name-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 10px;
+    padding-bottom: 14px; border-bottom: 1px solid var(--line);
+  }
+  #name {
+    min-width: 0; padding: 0; border: 0; outline: 0; color: var(--ink);
+    background: transparent; font-family: Georgia, serif;
+    font-size: clamp(30px, 4vw, 48px);
+  }
+  #name::placeholder { color: #b7adb2; }
+  .play {
+    width: 54px; height: 54px; border: 0; border-radius: 50%;
+    color: white; background: var(--accent); cursor: pointer;
+    box-shadow: 0 9px 24px color-mix(in srgb, var(--accent) 32%, transparent);
+    transition: transform .2s ease, filter .2s ease;
+  }
+  .play:hover { transform: scale(1.055); filter: brightness(.95); }
+  .play:active { transform: scale(.98); }
+  .play svg { width: 19px; vertical-align: middle; transform: translateX(1px); }
+  .options {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    margin-top: 20px;
+  }
+  select {
+    width: 100%; height: 43px; padding: 0 12px;
+    border: 1px solid var(--line); border-radius: 11px; outline: 0;
+    color: var(--ink); background: rgba(255,255,255,.52);
+  }
+  .actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 22px; }
+  .action {
+    height: 42px; padding: 0 16px; border: 1px solid var(--line);
+    border-radius: 999px; color: var(--ink); background: rgba(255,255,255,.48);
+    cursor: pointer; transition: background .2s ease, transform .2s ease;
+  }
+  .action:hover { background: white; transform: translateY(-1px); }
+  .sound-note {
+    min-height: 20px; margin: 13px 0 0; color: var(--muted);
+    font-size: 12px;
+  }
+  .art {
+    position: relative; aspect-ratio: 1; display: grid; place-items: center;
+  }
+  .art::before {
+    content: ""; position: absolute; inset: 8%; border-radius: 50%;
+    background: rgba(255,255,255,.46);
+    box-shadow: 0 22px 70px rgba(70, 44, 55, .12);
+  }
+  canvas {
+    position: relative; width: 100%; height: 100%;
+    filter: drop-shadow(0 14px 28px rgba(91, 47, 65, .12));
+  }
+  .signature {
+    position: absolute; bottom: 5%; left: 50%; transform: translateX(-50%);
+    max-width: 76%; overflow: hidden; color: var(--muted);
+    font-family: Georgia, serif; font-size: clamp(14px, 2vw, 21px);
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; z-index: 10;
+    padding: 11px 16px; border-radius: 999px; color: white;
+    background: #251f28; box-shadow: 0 12px 34px rgba(0,0,0,.2);
+    opacity: 0; transform: translate(-50%, 12px); pointer-events: none;
+    transition: .24s ease;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  @media (max-width: 820px) {
+    .app { grid-template-columns: 1fr; min-height: auto; }
+    h1 { max-width: none; }
+    .art { width: min(560px, 100%); margin: 0 auto; order: -1; }
+    .copy { padding-bottom: 30px; }
+  }
+  @media (max-width: 450px) {
+    .app { padding: 18px; }
+    .options { grid-template-columns: 1fr; }
+    .action { flex: 1; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <section class="copy">
+    <p class="eyebrow">Имя как музыка</p>
+    <h1>Услышь своё имя</h1>
+    <p class="intro">
+      Каждая буква становится нотой, а все буквы вместе — личной печатью.
+      Кириллица и латиница звучат в одном пентатоническом ладу.
+    </p>
+
+    <label for="name">Имя</label>
+    <div class="name-row">
+      <input id="name" maxlength="32" autocomplete="name" placeholder="Марина" value="Марина">
+      <button class="play" id="play" aria-label="Сыграть мелодию">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M7 4.7v14.6c0 .8.9 1.3 1.6.8l10.6-7.3a1 1 0 0 0 0-1.6L8.6 3.9A1 1 0 0 0 7 4.7Z"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="options">
+      <div>
+        <label for="instrument">Звук</label>
+        <select id="instrument">
+          <option value="box">Музыкальная шкатулка</option>
+          <option value="marimba">Маримба</option>
+          <option value="bell">Колокольчик</option>
+        </select>
+      </div>
+      <div>
+        <label for="tempo">Темп</label>
+        <select id="tempo">
+          <option value="0.34">Живой</option>
+          <option value="0.46" selected>Спокойный</option>
+          <option value="0.60">Медленный</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="action" id="share">Поделиться ссылкой</button>
+      <button class="action" id="download">Скачать печать</button>
+    </div>
+    <p class="sound-note" id="status">На iPhone отключи беззвучный режим и нажми ▶.</p>
+  </section>
+
+  <section class="art" aria-label="Узор имени">
+    <canvas id="mandala" width="1000" height="1000"></canvas>
+    <div class="signature" id="signature">Марина</div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const alphabet = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const vowels = new Set([..."АЕЁИОУЫЭЮЯЪAEIOUY"]);
+const degrees = [0, 2, 4, 7, 9];
+const canvas = document.querySelector("#mandala");
+const ctx = canvas.getContext("2d");
+const nameInput = document.querySelector("#name");
+const instrumentInput = document.querySelector("#instrument");
+const tempoInput = document.querySelector("#tempo");
+const signature = document.querySelector("#signature");
+const status = document.querySelector("#status");
+const toast = document.querySelector("#toast");
+let audioContext;
+let playingNodes = [];
+let redrawTimer;
+
+function cleanName(value) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function lettersOf(value) {
+  return [...cleanName(value).toUpperCase()].filter(char => alphabet.includes(char));
+}
+
+function hashName(value) {
+  let hash = 2166136261;
+  for (const char of value) {
+    hash ^= char.codePointAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function colorFor(value) {
+  const first = lettersOf(value)[0] || "М";
+  const index = Math.max(0, alphabet.indexOf(first));
+  const hue = (index * 37 + 338) % 360;
+  return {
+    hue,
+    strong: `hsl(${hue} 45% 48%)`,
+    soft: `hsl(${hue} 55% 82%)`,
+    pale: `hsl(${hue} 60% 93%)`
+  };
+}
+
+function notesFor(value) {
+  return lettersOf(value).map((char, index) => {
+    const letterIndex = alphabet.indexOf(char);
+    const degree = degrees[letterIndex % degrees.length];
+    const octave = 4 + ((Math.floor(letterIndex / degrees.length) + index) % 2);
+    const midi = 12 * (octave + 1) + degree;
+    return {
+      char,
+      degree,
+      frequency: 440 * 2 ** ((midi - 69) / 12),
+      long: vowels.has(char),
+      index: letterIndex
+    };
+  });
+}
+
+function setHash(name) {
+  const next = "#" + encodeURIComponent(name);
+  if (location.hash !== next) history.replaceState(null, "", next);
+}
+
+function drawMandala(value) {
+  const name = cleanName(value) || "Имя";
+  const notes = notesFor(name);
+  const colors = colorFor(name);
+  document.documentElement.style.setProperty("--accent", colors.strong);
+  document.documentElement.style.setProperty("--accent-soft", colors.soft);
+  signature.textContent = name;
+  setHash(name);
+
+  const w = canvas.width, h = canvas.height;
+  const cx = w / 2, cy = h / 2;
+  ctx.clearRect(0, 0, w, h);
+
+  const glow = ctx.createRadialGradient(cx, cy, 30, cx, cy, 430);
+  glow.addColorStop(0, "rgba(255,255,255,.96)");
+  glow.addColorStop(.66, colors.pale);
+  glow.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, w, h);
+
+  if (!notes.length) return;
+  const seed = hashName(name);
+  const symmetry = 8 + (seed % 7) * 2;
+  const rings = Math.min(6, Math.max(3, Math.ceil(notes.length / 2)));
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.lineCap = "round";
+  ctx.globalCompositeOperation = "multiply";
+
+  for (let arm = 0; arm < symmetry; arm++) {
+    ctx.save();
+    ctx.rotate(arm * Math.PI * 2 / symmetry);
+    if (arm % 2) ctx.scale(-1, 1);
+
+    notes.forEach((note, index) => {
+      const ring = index % rings;
+      const radius = 92 + ring * 57 + (note.degree / 9) * 30;
+      const spread = 28 + note.degree * 3.7;
+      const tilt = ((note.index % 9) - 4) * .025;
+      ctx.save();
+      ctx.rotate(tilt);
+      ctx.strokeStyle = `hsla(${colors.hue + note.degree * 3} 48% 42% / ${.23 + ring * .035})`;
+      ctx.fillStyle = `hsla(${colors.hue + index * 4} 58% 68% / .075)`;
+      ctx.lineWidth = 2.1 - ring * .13;
+      ctx.beginPath();
+      ctx.moveTo(radius - 48, 0);
+      ctx.bezierCurveTo(
+        radius - 12, -spread,
+        radius + 34, -spread * .62,
+        radius + 66, 0
+      );
+      ctx.bezierCurveTo(
+        radius + 34, spread * .62,
+        radius - 12, spread,
+        radius - 48, 0
+      );
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    });
+    ctx.restore();
+  }
+
+  for (let ring = 0; ring < rings + 1; ring++) {
+    ctx.strokeStyle = `hsla(${colors.hue} 40% 38% / ${.10 + ring * .015})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 64 + ring * 59, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = colors.strong;
+  ctx.beginPath();
+  ctx.arc(0, 0, 12 + notes.length % 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function stopSound() {
+  playingNodes.forEach(node => {
+    try { node.stop(); } catch (_) {}
+  });
+  playingNodes = [];
+}
+
+function tone(start, note, beat, instrument) {
+  const context = audioContext;
+  const master = context.createGain();
+  master.connect(context.destination);
+  const duration = beat * (note.long ? 1.75 : 1.05);
+  const attack = instrument === "marimba" ? .012 : .025;
+  const release = instrument === "bell" ? 1.7 : instrument === "box" ? 1.05 : .48;
+  const end = start + duration + release;
+
+  const partials = instrument === "bell"
+    ? [[1, .58], [2.01, .22], [3.97, .11], [6.1, .055]]
+    : instrument === "marimba"
+      ? [[1, .75], [2.98, .16], [5.1, .055]]
+      : [[1, .68], [2, .18], [4.02, .075], [.5, .045]];
+
+  master.gain.setValueAtTime(.0001, start);
+  master.gain.exponentialRampToValueAtTime(.23, start + attack);
+  master.gain.exponentialRampToValueAtTime(
+    instrument === "marimba" ? .025 : .07,
+    start + Math.max(.18, duration * .72)
+  );
+  master.gain.exponentialRampToValueAtTime(.0001, end);
+
+  partials.forEach(([ratio, level]) => {
+    const oscillator = context.createOscillator();
+    const partialGain = context.createGain();
+    oscillator.type = instrument === "marimba" && ratio > 1 ? "triangle" : "sine";
+    oscillator.frequency.setValueAtTime(note.frequency * ratio, start);
+    partialGain.gain.value = level;
+    oscillator.connect(partialGain).connect(master);
+    oscillator.start(start);
+    oscillator.stop(end + .02);
+    playingNodes.push(oscillator);
+  });
+  return duration;
+}
+
+async function playName() {
+  const name = cleanName(nameInput.value);
+  const notes = notesFor(name);
+  if (!notes.length) {
+    showToast("Напиши имя буквами");
+    nameInput.focus();
+    return;
+  }
+  stopSound();
+  audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+  await audioContext.resume();
+  const beat = Number(tempoInput.value);
+  const instrument = instrumentInput.value;
+  let cursor = audioContext.currentTime + .07;
+  notes.forEach((note, index) => {
+    tone(cursor, note, beat, instrument);
+    cursor += beat * (note.long ? 1.42 : .86);
+    if (index === notes.length - 1) cursor += .2;
+  });
+  status.textContent = `${name}: ${notes.length} нот · ${instrumentInput.selectedOptions[0].text}`;
+  drawMandala(name);
+}
+
+function showToast(message) {
+  toast.textContent = message;
+  toast.classList.add("show");
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => toast.classList.remove("show"), 1900);
+}
+
+async function share() {
+  const name = cleanName(nameInput.value) || "Марина";
+  drawMandala(name);
+  const url = location.href;
+  const payload = {
+    title: `Мелодия имени ${name}`,
+    text: `Послушай, как звучит имя ${name}`,
+    url
+  };
+  try {
+    if (navigator.share) {
+      await navigator.share(payload);
+    } else {
+      await navigator.clipboard.writeText(url);
+      showToast("Ссылка скопирована");
+    }
+  } catch (error) {
+    if (error.name !== "AbortError") {
+      try {
+        await navigator.clipboard.writeText(url);
+        showToast("Ссылка скопирована");
+      } catch (_) {
+        showToast("Скопируй адрес из строки браузера");
+      }
+    }
+  }
+}
+
+function downloadPrint() {
+  const name = cleanName(nameInput.value) || "Имя";
+  const link = document.createElement("a");
+  link.download = `печать-${name.replace(/\s+/g, "-")}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+  showToast("Печать сохранена");
+}
+
+function loadFromHash() {
+  if (!location.hash.slice(1)) return;
+  try {
+    const value = decodeURIComponent(location.hash.slice(1));
+    if (value) nameInput.value = value.slice(0, 32);
+  } catch (_) {}
+}
+
+nameInput.addEventListener("input", () => {
+  clearTimeout(redrawTimer);
+  redrawTimer = setTimeout(() => drawMandala(nameInput.value), 90);
+});
+nameInput.addEventListener("keydown", event => {
+  if (event.key === "Enter") playName();
+});
+document.querySelector("#play").addEventListener("click", playName);
+document.querySelector("#share").addEventListener("click", share);
+document.querySelector("#download").addEventListener("click", downloadPrint);
+addEventListener("hashchange", () => {
+  loadFromHash();
+  drawMandala(nameInput.value);
+});
+
+loadFromHash();
+drawMandala(nameInput.value);
+</script>
+</body>
+</html>
